@@ -296,6 +296,8 @@ void TFlux::Exe_fluxfile(int bgn, int end)
 
   for(int idx=bgn; idx<=end; idx++) {
     TString roostr = TString::Format("/home/xji/data0/work/101_flux_Xs/bnb_gsimple_fluxes_01.09.2019_463/converted_beammc_wincorr_%04d.root", idx);
+    //TString roostr = TString::Format("/pnfs/uboone/persistent/uboonebeam/bnb_gsimple/bnb_gsimple_fluxes_01.09.2019_463/converted_beammc_wincorr_%04d.root", idx);
+    
     if( Flag_file_exist(roostr) ) {
       vc_fluxfile_list.push_back( roostr );
       cout<<" - "<<roostr<<endl;
