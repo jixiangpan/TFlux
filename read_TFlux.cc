@@ -490,7 +490,8 @@ void TFlux::Exe_read_tree(int out_index)
   ////////////////////////////////////////
 
   TH1D *h1_POT = new TH1D("h1_POT", "", 1, 0, 1); h1_POT->SetBinContent(1, val_POT);
-  
+
+  TH1D *h1_numu_window = new TH1D("h1_numu_window", "", 100, 0, 5);
   TH1D *h1_numu_XYplane = new TH1D("h1_numu_XYplane", "", 100, 0, 5);
   TH1D *h1_numu_Circle = new TH1D("h1_numu_Circle", "", 100, 0, 5);
   TH1D *h1_numu_Square = new TH1D("h1_numu_Square", "", 100, 0, 5);
@@ -541,6 +542,9 @@ void TFlux::Exe_read_tree(int out_index)
     bool flag_pass_Cuboid  = Flag_pass_Cuboid_fixed(vc_uB_LArTPC_center, vc_uB_LArTPC_halfXYZ, vtx_nu_at_window, direction_unit);
 
     if( pdg==numu ) {
+
+      h1_numu_window->Fill( E );
+      
       if( flag_pass_XYplane ) h1_numu_XYplane->Fill( E );
       if( flag_pass_Circle )  h1_numu_Circle->Fill( E );
       if( flag_pass_Square )  h1_numu_Square->Fill( E );
@@ -552,6 +556,7 @@ void TFlux::Exe_read_tree(int out_index)
 
   TFile *outfile = new TFile(TString::Format("subfile_%06d.root", out_index), "recreate");
   h1_POT->Write();
+  h1_numu_window->Write();
   h1_numu_XYplane->Write();
   h1_numu_Circle->Write();
   h1_numu_Square->Write();
