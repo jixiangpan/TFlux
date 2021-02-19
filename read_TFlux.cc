@@ -536,7 +536,7 @@ void TFlux::Exe_read_tree(int out_index)
     bool flag_pass_XYplane = Flag_pass_XYplane_Zfixed(point_fixed.Z(), vtx_nu_at_window, direction_unit);
     bool flag_pass_Circle  = Flag_pass_Circle_fixed(point_fixed, radius_fixed, vtx_nu_at_window, direction_unit);
     bool flag_pass_Square  = Flag_pass_Square_fixed(point_fixed, radius_fixed, vtx_nu_at_window, direction_unit);
-    bool flag_pass_Cuboid  = Flag_pass_Cuboid_fixed(point_fixed, halfXYZ_fixed, vtx_nu_at_window, direction_unit);
+    bool flag_pass_Cuboid  = Flag_pass_Cuboid_fixed(vc_uB_LArTPC_center, vc_uB_LArTPC_halfXYZ, vtx_nu_at_window, direction_unit);
 
     if( pdg==numu ) {
       if( flag_pass_XYplane ) h1_numu_XYplane->Fill( E );
