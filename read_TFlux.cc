@@ -80,7 +80,7 @@ public:
   void Exe_fluxfile(int bgn, int end);
   bool Flag_file_exist(TString filename);
 
-  void Exe_read_tree();
+  void Exe_read_tree(int out_index);
 
   bool Flag_pass_XYplane_Zfixed(double Zfixed, TVector3 point_at_window, TVector3 direction_unit);  
   bool Flag_pass_Circle_fixed(TVector3 point_fixed, double radius, TVector3 point_at_window, TVector3 direction_unit);  
@@ -296,7 +296,10 @@ void TFlux::Exe_fluxfile(int bgn, int end)
 
   for(int idx=bgn; idx<=end; idx++) {
     TString roostr = TString::Format("/home/xji/data0/work/101_flux_Xs/bnb_gsimple_fluxes_01.09.2019_463/converted_beammc_wincorr_%04d.root", idx);
-    if( Flag_file_exist(roostr) ) vc_fluxfile_list.push_back( roostr );
+    if( Flag_file_exist(roostr) ) {
+      vc_fluxfile_list.push_back( roostr );
+      cout<<" - "<<roostr<<endl;
+    }
   }
 
   cout<<TString::Format("      input file(s) %d", (int)(vc_fluxfile_list.size()) )<<endl<<endl;
@@ -312,7 +315,7 @@ bool TFlux::Flag_file_exist(TString filename)
 
 //////////////////////////// ccc
 
-void TFlux::Exe_read_tree()
+void TFlux::Exe_read_tree(int out_index)
 {
   cout<<" ---> read tree "<<endl<<endl;
   
@@ -348,6 +351,8 @@ void TFlux::Exe_read_tree()
   val_POT = total_pot;
   
   //////////////////////////////////////
+
+  const int numu = 14;
   
   // Decay mode that produced neutrino: 
   // 1  K0L -> nue pi- e+
@@ -481,6 +486,15 @@ void TFlux::Exe_read_tree()
   //////
   double x_min = 1e6; double x_max = -1e6;
   double y_min = 1e6; double y_max = -1e6;
+
+  ////////////////////////////////////////
+
+  TH1D *h1_numu_XYplane = new TH1D("h1_numu_XYplane", "", 100, 0, 5);
+  TH1D *h1_numu_Circle = new TH1D("h1_numu_Circle", "", 100, 0, 5);
+  TH1D *h1_numu_Square = new TH1D("h1_numu_Square", "", 100, 0, 5);
+  TH1D *h1_numu_Cuboid = new TH1D("h1_numu_Cuboid", "", 100, 0, 5);
+  
+  ////////////////////////////////////////
   
   for(int ientry=0; ientry<entries; ientry++) {
     if( ientry%max(1, entries/10)==0 ) cout<<Form(" ---> processing %6.3f, %12d", ientry*1./entries, ientry)<<endl;
@@ -520,45 +534,72 @@ void TFlux::Exe_read_tree()
     TVector3 halfXYZ_fixed = vc_uB_LArTPC_halfXYZ;
     
     bool flag_pass_XYplane = Flag_pass_XYplane_Zfixed(point_fixed.Z(), vtx_nu_at_window, direction_unit);
-    bool flag_pass_Circle_fixed = Flag_pass_Circle_fixed(point_fixed, radius_fixed, vtx_nu_at_window, direction_unit);
-    bool flag_pass_Square_fixed = Flag_pass_Square_fixed(point_fixed, radius_fixed, vtx_nu_at_window, direction_unit);
-    bool flag_pass_Cuboid_fixed = Flag_pass_Cuboid_fixed(point_fixed, halfXYZ_fixed, vtx_nu_at_window, direction_unit);
+    bool flag_pass_Circle  = Flag_pass_Circle_fixed(point_fixed, radius_fixed, vtx_nu_at_window, direction_unit);
+    bool flag_pass_Square  = Flag_pass_Square_fixed(point_fixed, radius_fixed, vtx_nu_at_window, direction_unit);
+    bool flag_pass_Cuboid  = Flag_pass_Cuboid_fixed(point_fixed, halfXYZ_fixed, vtx_nu_at_window, direction_unit);
+
+    if( pdg==numu ) {
+      if( flag_pass_XYplane ) h1_numu_XYplane->Fill( E );
+      if( flag_pass_Circle )  h1_numu_Circle->Fill( E );
+      if( flag_pass_Square )  h1_numu_Square->Fill( E );
+      if( flag_pass_Cuboid )  h1_numu_Cuboid->Fill( E );
+    }
+    
   }  
   cout<<endl;
+
+  TFile *outfile = new TFile(TString::Format("subfile_%06d.root", out_index), "recreate");  
+  h1_numu_XYplane->Write();
+  h1_numu_Circle->Write();
+  h1_numu_Square->Write();
+  h1_numu_Cuboid->Write();
+  outfile->Close();
   
+  ///////////////////////////////// plotting
+  
+  double area_XYplane = vc_uB_LArTPC_halfXYZ.X() * vc_uB_LArTPC_halfXYZ.Y() * 4;
+  double area_Circle = 3.1415926 * 50*50;
+  double area_Square = 50*50 *4;
+  double area_Cuboid = area_XYplane;
+  double bin_width = h1_numu_XYplane->GetBinWidth(1);
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-void read_TFlux()
+int main(int argc, char** argv)
 {  
-  //////////////////////////////////////////////////////////////////////////////////////// Draw style
+
+  int infile_bgn = 0;
+  int infile_end = 0;
+  int outfile_idx = 1;
+
+  for(int i=1; i<argc; i++) {    
+    if( strcmp(argv[i],"-ia")==0 ) {
+      stringstream convert( argv[i+1] );
+      if(  !( convert>>infile_bgn ) ) { cerr<<" ---> Error infile_bgn !"<<endl; exit(1); }
+    }
+    
+    if( strcmp(argv[i],"-ib")==0 ) {
+      stringstream convert( argv[i+1] );
+      if(  !( convert>>infile_end ) ) { cerr<<" ---> Error infile_end !"<<endl; exit(1); }
+    }
+    
+    if( strcmp(argv[i],"-o")==0 ) {
+      stringstream convert( argv[i+1] );
+      if(  !( convert>>outfile_idx ) ) { cerr<<" ---> Error outfile_idx !"<<endl; exit(1); }
+    }   
+  }
+
+  cout<<endl<<TString::Format(" ---> infile bgn/end %4d %4d, outfile %4d", infile_bgn, infile_end, outfile_idx)<<endl<<endl;
   
-  gStyle->SetOptStat(0);
-  //gStyle->SetPalette(kBird);
-
-  double snWidth = 2;
-
-  // use medium bold lines and thick markers
-  gStyle->SetLineWidth(snWidth);
-  gStyle->SetFrameLineWidth(snWidth);
-  gStyle->SetHistLineWidth(snWidth);
-  gStyle->SetFuncWidth(snWidth);
-  gStyle->SetGridWidth(snWidth);
-  gStyle->SetLineStyleString(2,"[12 12]"); // postscript dashes
-  gStyle->SetMarkerStyle(20);
-  gStyle->SetMarkerSize(1.0);
-  gStyle->SetEndErrorSize(4);
-  gStyle->SetEndErrorSize(0);
-
-  ////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////
   
   TString roostr = "";
   
   TFlux *flux_test = new TFlux();
-  flux_test->Exe_fluxfile(0, 1);
-  flux_test->Exe_read_tree();
+  flux_test->Exe_fluxfile(infile_bgn, infile_end);
+  flux_test->Exe_read_tree(outfile_idx);
 
-
-  
+  return 0;
 }
