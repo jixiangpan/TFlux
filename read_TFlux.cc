@@ -489,6 +489,8 @@ void TFlux::Exe_read_tree(int out_index)
 
   ////////////////////////////////////////
 
+  TH1D *h1_POT = new TH1D("h1_POT", "", 1, 0, 1); h1_POT->SetBinContent(1, val_POT);
+  
   TH1D *h1_numu_XYplane = new TH1D("h1_numu_XYplane", "", 100, 0, 5);
   TH1D *h1_numu_Circle = new TH1D("h1_numu_Circle", "", 100, 0, 5);
   TH1D *h1_numu_Square = new TH1D("h1_numu_Square", "", 100, 0, 5);
@@ -548,7 +550,8 @@ void TFlux::Exe_read_tree(int out_index)
   }  
   cout<<endl;
 
-  TFile *outfile = new TFile(TString::Format("subfile_%06d.root", out_index), "recreate");  
+  TFile *outfile = new TFile(TString::Format("subfile_%06d.root", out_index), "recreate");
+  h1_POT->Write();
   h1_numu_XYplane->Write();
   h1_numu_Circle->Write();
   h1_numu_Square->Write();
