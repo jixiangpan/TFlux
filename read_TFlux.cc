@@ -73,6 +73,7 @@ public:
     vc_uB_LArTPC_center.SetX( -1.55   + vc_uB_LArTPC_halfXYZ.X() );
     vc_uB_LArTPC_center.SetY( -115.53 + vc_uB_LArTPC_halfXYZ.Y() );
     vc_uB_LArTPC_center.SetZ( -0.1    + vc_uB_LArTPC_halfXYZ.Z() );
+
   }
   
   ////////////////////////// function member
@@ -279,7 +280,7 @@ bool TFlux::Flag_pass_XYplane_Zfixed(double Zfixed, TVector3 point_at_window, TV
   double diff_X = fabs( intersection_X - vc_uB_LArTPC_center.X() );
   double diff_Y = fabs( intersection_Y - vc_uB_LArTPC_center.Y() );
   
-  if( diff_X<=vc_uB_LArTPC_halfXYZ.X() && diff_Y<=vc_uB_LArTPC_halfXYZ.Y() ) {
+  if( diff_X<=(vc_uB_LArTPC_halfXYZ.X()-3) && (diff_Y<=vc_uB_LArTPC_halfXYZ.Y()-3) ) {// SCB effect, 3cm in Wire-Cell
     flag = true;      
   }    
   
@@ -491,13 +492,21 @@ void TFlux::Exe_read_tree(int out_index)
 
   ////////////////////////////////////////
 
+  TString roostr = "";
+  
   TH1D *h1_POT = new TH1D("h1_POT", "", 1, 0, 1); h1_POT->SetBinContent(1, val_POT);
 
-  TH1D *h1_numu_window = new TH1D("h1_numu_window", "", 100, 0, 5);
-  TH1D *h1_numu_XYplane = new TH1D("h1_numu_XYplane", "", 100, 0, 5);
-  TH1D *h1_numu_Circle = new TH1D("h1_numu_Circle", "", 100, 0, 5);
-  TH1D *h1_numu_Square = new TH1D("h1_numu_Square", "", 100, 0, 5);
-  TH1D *h1_numu_Cuboid = new TH1D("h1_numu_Cuboid", "", 100, 0, 5);
+  TH1D *h1_numu_window = new TH1D("h1_numu_window", "", 200, 0, 10);
+  TH1D *h1_numu_XYplane = new TH1D("h1_numu_XYplane", "", 200, 0, 10);
+  TH1D *h1_numu_Circle = new TH1D("h1_numu_Circle", "", 200, 0, 10);
+  TH1D *h1_numu_Square = new TH1D("h1_numu_Square", "", 200, 0, 10);
+  TH1D *h1_numu_Cuboid = new TH1D("h1_numu_Cuboid", "", 200, 0, 10);
+
+  map<int, TH1D*>h1_sub_XYplane;
+  for(int idx=1; idx<=100; idx++) {
+    roostr = TString::Format("h1_sub_XYplane_%03d", idx);
+    h1_sub_XYplane[idx] = new TH1D(roostr, "", 200, 0, 10);
+  }
   
   ////////////////////////////////////////
   
@@ -531,6 +540,8 @@ void TFlux::Exe_read_tree(int out_index)
     TVector3 direction_unit(px/E, py/E, pz/E);
     double val_phi = direction_unit.Phi() * 180./3.1415926;
     double val_theta = direction_unit.Theta() * 180./3.1415926;
+
+    if( pz<0 ) continue;// only forward going neutrino
     
     //////////////////
 
@@ -538,7 +549,7 @@ void TFlux::Exe_read_tree(int out_index)
     double radius_fixed = 50;
     TVector3 halfXYZ_fixed = vc_uB_LArTPC_halfXYZ;
     
-    bool flag_pass_XYplane = Flag_pass_XYplane_Zfixed(point_fixed.Z(), vtx_nu_at_window, direction_unit);
+    bool flag_pass_XYplane = Flag_pass_XYplane_Zfixed(point_fixed.Z()-vc_uB_LArTPC_halfXYZ.Z(), vtx_nu_at_window, direction_unit);
     bool flag_pass_Circle  = Flag_pass_Circle_fixed(point_fixed, radius_fixed, vtx_nu_at_window, direction_unit);
     bool flag_pass_Square  = Flag_pass_Square_fixed(point_fixed, radius_fixed, vtx_nu_at_window, direction_unit);
     bool flag_pass_Cuboid  = Flag_pass_Cuboid_fixed(vc_uB_LArTPC_center, vc_uB_LArTPC_halfXYZ, vtx_nu_at_window, direction_unit);
@@ -551,6 +562,16 @@ void TFlux::Exe_read_tree(int out_index)
       if( flag_pass_Circle )  h1_numu_Circle->Fill( E );
       if( flag_pass_Square )  h1_numu_Square->Fill( E );
       if( flag_pass_Cuboid )  h1_numu_Cuboid->Fill( E );
+
+      for(int idx=1; idx<=100; idx++) {
+	TVector3 point_fixed_user = vc_uB_LArTPC_center;
+	double Zpos_user = vc_uB_LArTPC_center.Z() - vc_uB_LArTPC_halfXYZ.Z() + 10 * (idx-1);
+	point_fixed_user.SetZ(Zpos_user);
+
+	bool flag_pass_XYplane_user = Flag_pass_XYplane_Zfixed(point_fixed_user.Z(), vtx_nu_at_window, direction_unit);// SCB effect
+	if( flag_pass_XYplane_user ) h1_sub_XYplane[idx]->Fill( E );
+      }
+      
     }
     
   }  
@@ -563,6 +584,11 @@ void TFlux::Exe_read_tree(int out_index)
   h1_numu_Circle->Write();
   h1_numu_Square->Write();
   h1_numu_Cuboid->Write();
+
+  for(int idx=1; idx<=100; idx++) {
+    h1_sub_XYplane[idx]->Write();
+  }
+  
   outfile->Close();
   
   ///////////////////////////////// plotting
